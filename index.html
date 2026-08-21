@@ -4041,6 +4041,12 @@ function shotHostMake(srcNode, natural) {
   var host = document.createElement('div');
   host.className = 'stgShotHost';
   var cp = srcNode.cloneNode(true);
+  /* #stage 在正常页面默认隐藏；克隆到离屏宿主后已不再匹配
+     body.stgOn .wrap > #stage，所以必须显式打开，否则只会截到空宿主。 */
+  cp.style.setProperty('display', 'block', 'important');
+  cp.style.setProperty('visibility', 'visible', 'important');
+  cp.style.setProperty('position', 'static', 'important');
+  cp.style.setProperty('transform', 'none', 'important');
   host.appendChild(cp);
   if (natural) {
     host.style.width = 'max-content';
@@ -4072,8 +4078,11 @@ function shotRun(srcNode, fname, natural, btn, label) {
   if (btn) { btn.disabled = true; btn.textContent = '出图中…'; }
   shotMsg('正在渲染' + label + '，表格较大时需要几秒，请勿切换页面…', '');
   var host = shotHostMake(srcNode, natural);
-  var w = host.scrollWidth || host.offsetWidth || 1240;
-  var h = host.scrollHeight || host.offsetHeight || 800;
+  var target = host.firstElementChild || host;
+  /* 以实际内容节点而非宿主测量，避免宿主的离屏定位、内边距或空布局
+     把整页高度误判成几十像素，继而导出空白图片。 */
+  var w = Math.ceil(Math.max(target.scrollWidth || 0, target.offsetWidth || 0, 1240));
+  var h = Math.ceil(Math.max(target.scrollHeight || 0, target.offsetHeight || 0, 800));
   var want = shotWant();
   var ratio = shotFitRatio(w, h, want);
   var downNote = (ratio < want)
@@ -4081,7 +4090,7 @@ function shotRun(srcNode, fname, natural, btn, label) {
     : '';
   function done() { shotHostDrop(host); if (btn) { btn.disabled = false; btn.textContent = old; } }
   try {
-    html2canvas(host, {
+    html2canvas(target, {
       backgroundColor: '#ffffff',
       scale: ratio,
       useCORS: true,
